@@ -1,5 +1,4 @@
-import GeographicPage from "./GeographicPage";
-import Layout from "../components/Layout"; // adjust path if needed
+import Layout from "../components/Layout";
 
 
 export default function RootLayout() {
