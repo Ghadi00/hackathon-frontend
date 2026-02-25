@@ -1,9 +1,9 @@
 import { useSignal } from "@preact/signals";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import SpinnerComponent from "../internal/spinner/spinner.component";
 
 export default function AppInit({ children }: { children: React.ReactNode }) {
-    const loading = useSignal<boolean>(true);
+    const [loading, setLoading]= useState<boolean>(true);
 
     useEffect(() => {
         const script = document.createElement('script');
@@ -11,11 +11,11 @@ export default function AppInit({ children }: { children: React.ReactNode }) {
         script.crossOrigin = "anonymous";
 
         script.onload = () => {
-            loading.value = false;
+            setLoading(false);
         };
 
         document.head.appendChild(script);
     }, []);
 
-    return loading.value ? <SpinnerComponent /> : children;
+    return loading? <SpinnerComponent /> : children;
 }

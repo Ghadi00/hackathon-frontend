@@ -55,7 +55,7 @@ function RoutingComponent() {
             <Route element={<AuthGuard />}>
             </Route>
 
-            <Route path={ROUTES.root} element={<HomePage />} />
+            <Route path={"*"} element={<HomePage />} />
         </Routes>
     );
 }
@@ -68,15 +68,15 @@ export default function RootLayout() {
             <AppInit>
                 {/* <SidebarProvider> */}
                 <BrowserRouter>
-                    <Suspense fallback={<LoadingComponent message="" />}>
+                    <Suspense fallback={<LoadingComponent message="Loading" />}>
                         <RoutingComponent />
                     </Suspense>
 
                     <ScrollToTop />
 
                     <ToastContainer
-                        position="bottom-left"
-                        theme="dark"
+                        position="top-right"
+                        theme="white"
                         hideProgressBar
                         autoClose={5000}
                         className="py-1 my-0"
