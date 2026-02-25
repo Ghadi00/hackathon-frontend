@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from "recharts";
 import { Maximize2, Minimize2, ChevronLeft, ChevronRight } from "lucide-react";
+import QueryApi from "../shared/api/query-api";
 
 const CHANNELS = ["Universities", "Syndicates", "Public Sector", "NGOs", "Employers"];
 const ACCENT = "#3B82A0";
@@ -100,19 +102,60 @@ const CustomBarLabel = (props: any) => {
 };
 
 export default function DisseminationPage() {
+  const { data: registrationsRes } = useQuery({
+    queryKey: ["performance", "registrations"],
+    queryFn: QueryApi.dashboard.getPerformanceRegistrations,
+  });
+
+  const registrationChannels = Array.isArray(registrationsRes?.channels)
+    ? registrationsRes.channels
+    : [];
+
+  const formatChannel = (value: string) => value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+
+  const barDataSource: { channel: string; count: number }[] = registrationChannels.length > 0
+    ? registrationChannels.map((item: any) => ({
+      channel: formatChannel(String(item.channel ?? "Unknown")),
+      count: Number(item.count) || 0,
+    }))
+    : barData;
+
+  const channels = barDataSource.map((item: { channel: string; count: number }) => item.channel);
+  const totalRegistrations = barDataSource.reduce((sum: number, item: { channel: string; count: number }) => sum + item.count, 0);
+  const pieDataSource: { name: string; value: number }[] = totalRegistrations > 0
+    ? barDataSource.map((item) => ({
+      name: item.channel,
+      value: Number(((item.count / totalRegistrations) * 100).toFixed(1)),
+    }))
+    : pieData;
+
+  const drillDownDataSource: Record<string, { name: string; count: number }[]> = registrationChannels.length > 0
+    ? registrationChannels.reduce((acc: Record<string, { name: string; count: number }[]>, item: any) => {
+      const channelName = formatChannel(String(item.channel ?? "Unknown"));
+      acc[channelName] = Array.isArray(item.learners)
+        ? item.learners.map((learner: any) => ({ name: learner.respondant_name, count: 1 }))
+        : [];
+      return acc;
+    }, {})
+    : drillDownData;
+
   const [expandedChart, setExpandedChart] = useState(false);
   const [timeRange, setTimeRange] = useState<string>("6 months");
   const [activeLine, setActiveLine] = useState<Record<string, boolean>>(
     Object.fromEntries(CHANNELS.map((c) => [c, true]))
   );
   const [drillDown, setDrillDown] = useState<string | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState("Universities");
+  const [selectedChannel, setSelectedChannel] = useState(channels[0] || "Universities");
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
   const handlePieClick = useCallback((_: any, index: number) => {
-    setSelectedChannel(pieData[index].name);
-    setDrillDown(pieData[index].name);
-  }, []);
+    setSelectedChannel(pieDataSource[index].name);
+    setDrillDown(pieDataSource[index].name);
+  }, [pieDataSource]);
 
   const toggleLine = (channel: string) => {
     setActiveLine((prev) => ({ ...prev, [channel]: !prev[channel] }));
@@ -120,7 +163,7 @@ export default function DisseminationPage() {
 
   // Drill Down View
   if (drillDown) {
-    const data = drillDownData[selectedChannel] || [];
+    const data = drillDownDataSource[selectedChannel] || [];
     return (
       <div className="space-y-5">
         {/* Breadcrumb */}
@@ -148,7 +191,7 @@ export default function DisseminationPage() {
                 className="px-3 py-1.5 rounded-md border border-[#DDE0E7] bg-white text-[#1A1D26] cursor-pointer"
                 style={{ fontSize: '13px' }}
               >
-                {CHANNELS.map((c) => (
+                {channels.map((c: string) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
@@ -251,7 +294,7 @@ export default function DisseminationPage() {
           <div className="mt-6 border-t border-[#E8E9ED] pt-4">
             <p style={{ fontSize: '12.5px', fontWeight: 500, color: '#6B7085', marginBottom: '8px' }}>Summary (Latest Month)</p>
             <div className="grid grid-cols-5 gap-4">
-              {barData.map((d, i) => (
+              {barDataSource.map((d: { channel: string; count: number }, i: number) => (
                 <div key={d.channel} className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS[i] }} />
                   <div>
@@ -281,7 +324,7 @@ export default function DisseminationPage() {
             Total registrations per dissemination channel
           </p>
           <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={barData} margin={{ left: -10, right: 10, top: 20, bottom: 5 }}>
+            <BarChart data={barDataSource} margin={{ left: -10, right: 10, top: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F0F1F3" vertical={false} />
               <XAxis dataKey="channel" tick={{ fontSize: 10.5, fill: '#6B7085' }} axisLine={{ stroke: '#E8E9ED' }} tickLine={false} interval={0} />
               <YAxis tick={{ fontSize: 10.5, fill: '#9CA0B0' }} axisLine={{ stroke: '#E8E9ED' }} tickLine={false} />
@@ -344,7 +387,7 @@ export default function DisseminationPage() {
             <ResponsiveContainer width="100%" height={420}>
               <PieChart>
                 <Pie
-                  data={pieData}
+                  data={pieDataSource}
                   cx="50%"
                   cy="50%"
                   innerRadius={90}
@@ -360,7 +403,7 @@ export default function DisseminationPage() {
                   labelLine={{ stroke: '#C5C8D4', strokeWidth: 1 }}
                   style={{ outline: 'none' }}
                 >
-                  {pieData.map((_, i) => (
+                  {pieDataSource.map((_: { name: string; value: number }, i: number) => (
                     <Cell
                       key={i}
                       fill={COLORS[i]}
@@ -372,7 +415,7 @@ export default function DisseminationPage() {
                 <Tooltip
                   contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '1px solid #E8E9ED', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                   formatter={(val: number, name: string) => {
-                    const item = barData.find((b) => b.channel === name);
+                    const item = barDataSource.find((b: { channel: string; count: number }) => b.channel === name);
                     return [`${val}% (${item ? item.count.toLocaleString() : "—"} registrations)`, name];
                   }}
                 />
@@ -382,7 +425,7 @@ export default function DisseminationPage() {
 
           {/* Legend */}
           <div className="flex flex-wrap justify-center gap-5 mt-4">
-            {pieData.map((d, i) => (
+            {pieDataSource.map((d: { name: string; value: number }, i: number) => (
               <div key={d.name} className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: COLORS[i] }} />
                 <span style={{ fontSize: '12px', color: '#4A4E5F' }}>{d.name}</span>

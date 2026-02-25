@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from "recharts";
 import { AlertTriangle, X, TrendingUp, TrendingDown, Users, BookOpen, Radio, MapPin } from "lucide-react";
+import QueryApi from "../shared/api/query-api";
 
 const ACCENT = "#3B82A0";
 const COLORS = ["#3B82A0", "#5EAEC5", "#8BCADB", "#2E6B82"];
@@ -754,12 +756,30 @@ function RegionDetailPanel({
 }
 
 export default function GeographicPage() {
+  const { data: regionalRes } = useQuery({
+    queryKey: ["geographic", "regional"],
+    queryFn: () => QueryApi.dashboard.getGeographicRegional("descending"),
+  });
+  useQuery({
+    queryKey: ["geographic", "channels"],
+    queryFn: QueryApi.dashboard.getGeographicChannels,
+  });
+
+  const displayedRegions: Region[] = Array.isArray(regionalRes?.regions) && regionalRes.regions.length > 0
+    ? regionalRes.regions.map((item: any, index: number) => ({
+      ...regions[index % regions.length],
+      id: String(item.name ?? `region-${index}`).toLowerCase().replace(/\s+/g, "-"),
+      name: item.name ?? regions[index % regions.length].name,
+      registrations: Number(item.count) || 0,
+    }))
+    : regions;
+
   const [selectedRegionId, setSelectedRegionId] = useState("beirut");
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const region = regions.find((r) => r.id === selectedRegionId) || regions[0];
+  const region = displayedRegions.find((r) => r.id === selectedRegionId) || displayedRegions[0];
   const hoveredRegionData = hoveredRegion
-    ? regions.find((r) => r.id === hoveredRegion) || null
+    ? displayedRegions.find((r) => r.id === hoveredRegion) || null
     : null;
 
   const equityColor =
@@ -774,8 +794,8 @@ export default function GeographicPage() {
   }, []);
 
   // National totals for context
-  const totalRegistrations = regions.reduce((s, r) => s + r.registrations, 0);
-  const underrepCount = regions.filter((r) => r.underrepresented).length;
+  const totalRegistrations = displayedRegions.reduce((s, r) => s + r.registrations, 0);
+  const underrepCount = displayedRegions.filter((r) => r.underrepresented).length;
 
   return (
     <div className="space-y-6">
@@ -789,7 +809,7 @@ export default function GeographicPage() {
           },
           {
             label: "Governorates Covered",
-            value: `${regions.length} / 8`,
+            value: `${displayedRegions.length} / 8`,
             icon: MapPin,
           },
           {
@@ -800,7 +820,7 @@ export default function GeographicPage() {
           },
           {
             label: "Avg. Completion Rate",
-            value: `${Math.round(regions.reduce((s, r) => s + r.completionRate, 0) / regions.length)}%`,
+            value: `${Math.round(displayedRegions.reduce((s, r) => s + r.completionRate, 0) / displayedRegions.length)}%`,
             icon: BookOpen,
           },
         ].map((kpi) => {
@@ -963,7 +983,7 @@ export default function GeographicPage() {
               className="px-3 py-1.5 rounded-md border border-[#DDE0E7] bg-white text-[#1A1D26] cursor-pointer"
               style={{ fontSize: "12.5px" }}
             >
-              {regions.map((r) => (
+              {displayedRegions.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
                 </option>

@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from "react-router";
+import { Outlet, NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
 import {
   BarChart3,
@@ -9,20 +9,21 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import ROUTES from "../static/routes";
 
 const navItems = [
-  { to: "/dissemination", label: "Dissemination", icon: BarChart3 },
-  { to: "/interest-strategy", label: "Interest & Strategy", icon: Lightbulb },
-  { to: "/geographic", label: "Geographic", icon: MapPin },
-  { to: "/learner-profiles", label: "Learner Profiles", icon: Users },
+  { to: ROUTES.dissemination, label: "Dissemination", icon: BarChart3 },
+  { to: ROUTES.interestStrategy, label: "Interest & Strategy", icon: Lightbulb },
+  { to: ROUTES.geographic, label: "Geographic", icon: MapPin },
+  { to: ROUTES.learnerProfiles, label: "Learner Profiles", icon: Users },
 ];
 
 const pageTitles: Record<string, string> = {
-  "/": "Dissemination Performance",
-  "/dissemination": "Dissemination Performance",
-  "/interest-strategy": "Interest & Strategy Insights",
-  "/geographic": "Geographic Insights",
-  "/learner-profiles": "Unified Learner Profiles",
+  [ROUTES.root]: "Dissemination Performance",
+  [ROUTES.dissemination]: "Dissemination Performance",
+  [ROUTES.interestStrategy]: "Interest & Strategy Insights",
+  [ROUTES.geographic]: "Geographic Insights",
+  [ROUTES.learnerProfiles]: "Unified Learner Profiles",
 };
 
 export default function Layout() {
@@ -55,7 +56,7 @@ export default function Layout() {
             const Icon = item.icon;
             const isActive =
               location.pathname === item.to ||
-              (item.to === "/dissemination" && location.pathname === "/");
+              (item.to === ROUTES.dissemination && location.pathname === ROUTES.root);
             return (
               <NavLink
                 key={item.to}
