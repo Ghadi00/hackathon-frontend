@@ -15,6 +15,7 @@ const api = {
 		requirePasswordReset: `${_baseUrl}/auth/request-password-reset`,
 		resetPassword: `${_baseUrl}/auth/reset-password`,
 	},
+<<<<<<< Updated upstream
 	performance: {
 		registrations: `${_baseUrl}/performance/registrations`,
 		capabilities: `${_baseUrl}/performance/capabilities`,
@@ -34,6 +35,9 @@ const api = {
 		demographics: `${_baseUrl}/profiles/demographics`,
 		programs: `${_baseUrl}/profiles/programs`,
 	},
+=======
+	
+>>>>>>> Stashed changes
 };
 
 export default api;
