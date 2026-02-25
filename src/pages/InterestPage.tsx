@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ZAxis, BarChart, Bar, Cell, ReferenceLine, Label,
 } from "recharts";
+import QueryApi from "../shared/api/query-api";
 
 const ACCENT = "#3B82A0";
 
@@ -98,6 +100,43 @@ const CustomBubbleLabel = (props: any) => {
 };
 
 export default function InterestStrategyPage() {
+  const { data: areasRes } = useQuery({
+    queryKey: ["interests", "areas"],
+    queryFn: QueryApi.dashboard.getInterestAreas,
+  });
+  const { data: motivationsRes } = useQuery({
+    queryKey: ["interests", "motivations"],
+    queryFn: QueryApi.dashboard.getInterestMotivations,
+  });
+  const { data: challengesRes } = useQuery({
+    queryKey: ["interests", "challenges"],
+    queryFn: QueryApi.dashboard.getInterestChallenges,
+  });
+
+  const bubbleDataSource = Array.isArray(areasRes?.areas) && areasRes.areas.length > 0
+    ? areasRes.areas.map((area: any, index: number) => ({
+      name: area.type,
+      demand: Number(area.demand) || 0,
+      growth: Number(area.growth ?? 0),
+      registrations: Number(area.registrations ?? area.demand ?? 0),
+      id: `${area.type}-${index}`,
+    }))
+    : bubbleData;
+
+  const motivationDataSource = Array.isArray(motivationsRes?.motivations) && motivationsRes.motivations.length > 0
+    ? motivationsRes.motivations.map((item: any) => ({
+      reason: item.type,
+      pct: Number(item.count) || 0,
+    }))
+    : motivationData;
+
+  const challengeDataSource = Array.isArray(challengesRes?.challenges) && challengesRes.challenges.length > 0
+    ? challengesRes.challenges.map((item: any) => ({
+      challenge: item.type,
+      pct: Number(item.count) || 0,
+    }))
+    : challengeData;
+
   const [selectedTrack, setSelectedTrack] = useState("GenAI");
   const track = trackDetails[selectedTrack] || trackDetails["GenAI"];
 
@@ -140,7 +179,7 @@ export default function InterestStrategyPage() {
               <ReferenceLine y={15} stroke="#DDE0E7" strokeDasharray="4 4" />
               <Tooltip content={<CustomBubbleTooltip />} />
               <Scatter
-                data={bubbleData}
+                data={bubbleDataSource}
                 fill={ACCENT}
                 fillOpacity={0.65}
                 stroke={ACCENT}
@@ -219,7 +258,7 @@ export default function InterestStrategyPage() {
             Primary reasons learners enroll in upskilling tracks
           </p>
           <div className="space-y-4">
-            {motivationData.map((d, i) => (
+            {motivationDataSource.map((d: { reason: string; pct: number }, i: number) => (
               <div key={d.reason}>
                 <div className="flex items-center justify-between mb-1">
                   <span style={{ fontSize: '12.5px', fontWeight: i === 0 ? 600 : 400, color: i === 0 ? '#1A1D26' : '#4A4E5F' }}>
@@ -254,7 +293,7 @@ export default function InterestStrategyPage() {
           Higher values indicate stronger barriers to participation.
         </p>
         <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={challengeData} layout="vertical" margin={{ left: 140, right: 50, top: 5, bottom: 5 }}>
+          <BarChart data={challengeDataSource} layout="vertical" margin={{ left: 140, right: 50, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#F0F1F3" horizontal={false} />
             <XAxis type="number" domain={[0, 50]} tick={{ fontSize: 11, fill: '#9CA0B0' }} axisLine={{ stroke: '#E8E9ED' }} unit="%" />
             <YAxis
@@ -272,7 +311,7 @@ export default function InterestStrategyPage() {
             <Bar dataKey="pct" radius={[0, 4, 4, 0]} barSize={20}
               label={{ position: 'right', fill: '#4A4E5F', fontSize: 11.5, fontWeight: 500, formatter: (v: number) => `${v}%` }}
             >
-              {challengeData.map((_, i) => {
+              {challengeDataSource.map((_: { challenge: string; pct: number }, i: number) => {
                 const intensity = 1 - i * 0.1;
                 return <Cell key={i} fill={`rgba(180, 60, 60, ${Math.max(0.25, intensity * 0.7)})`} />;
               })}

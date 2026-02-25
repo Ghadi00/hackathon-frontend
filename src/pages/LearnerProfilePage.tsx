@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, X, ChevronRight } from "lucide-react";
+import QueryApi from "../shared/api/query-api";
 
 interface Learner {
   id: number;
@@ -81,6 +83,61 @@ function ProviderBadge({ provider }: { provider: string }) {
 }
 
 export default function LearnerProfilesPage() {
+  const { data: adminsRes } = useQuery({
+    queryKey: ["profiles", "admins"],
+    queryFn: QueryApi.dashboard.getProfilesAdmins,
+  });
+  const { data: demographicsRes } = useQuery({
+    queryKey: ["profiles", "demographics"],
+    queryFn: QueryApi.dashboard.getProfilesDemographics,
+  });
+  const { data: programsRes } = useQuery({
+    queryKey: ["profiles", "programs"],
+    queryFn: QueryApi.dashboard.getProfilesPrograms,
+  });
+
+  const learnersData: Learner[] = useMemo(() => {
+    const admins = Array.isArray(adminsRes?.profiles) ? adminsRes.profiles : [];
+    const demographics = Array.isArray(demographicsRes?.profiles) ? demographicsRes.profiles : [];
+    const programs = Array.isArray(programsRes?.profiles) ? programsRes.profiles : [];
+
+    if (!admins.length || !demographics.length || !programs.length) {
+      return learners;
+    }
+
+    const maxLength = Math.max(admins.length, demographics.length, programs.length);
+
+    return Array.from({ length: maxLength }, (_, index) => {
+      const admin = admins[index] ?? {};
+      const demographic = demographics[index] ?? {};
+      const program = programs[index] ?? {};
+
+      const ageValue = Number(demographic.age);
+      let ageRange = "25–34";
+      if (!Number.isNaN(ageValue)) {
+        if (ageValue <= 24) ageRange = "18–24";
+        else if (ageValue <= 34) ageRange = "25–34";
+        else if (ageValue <= 44) ageRange = "35–44";
+        else ageRange = "45–54";
+      }
+
+      return {
+        id: Number(demographic.id ?? index + 1),
+        name: admin.name ?? `Learner ${index + 1}`,
+        ageRange,
+        employment: demographic.employement_status ?? "Unemployed",
+        jobLevel: demographic.level ?? "Entry",
+        industry: demographic.industry ?? "General",
+        track: program.trainin_track ?? "GenAI",
+        channel: program.channel ?? "University",
+        entity: program.channel ?? "N/A",
+        region: demographic.region ?? "Beirut",
+        skillLevel: program.skill_level ?? "Beginner",
+        provider: "Not linked",
+      };
+    });
+  }, [adminsRes, demographicsRes, programsRes]);
+
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("All");
   const [regionFilter, setRegionFilter] = useState("All");
@@ -92,7 +149,7 @@ export default function LearnerProfilesPage() {
   const [jobLevelFilter, setJobLevelFilter] = useState("All");
 
   const filteredLearners = useMemo(() => {
-    return learners.filter((l) => {
+    return learnersData.filter((l) => {
       const searchLower = search.toLowerCase();
       const matchSearch =
         !search ||
@@ -109,7 +166,7 @@ export default function LearnerProfilesPage() {
       const matchJobLevel = jobLevelFilter === "All" || l.jobLevel === jobLevelFilter;
       return matchSearch && matchChannel && matchRegion && matchTrack && matchAge && matchEmployment && matchIndustry && matchProvider && matchJobLevel;
     });
-  }, [search, channelFilter, regionFilter, trackFilter, ageFilter, employmentFilter, industryFilter, providerFilter, jobLevelFilter]);
+  }, [learnersData, search, channelFilter, regionFilter, trackFilter, ageFilter, employmentFilter, industryFilter, providerFilter, jobLevelFilter]);
 
   const clearFilters = () => {
     setSearch("");
@@ -183,7 +240,7 @@ export default function LearnerProfilesPage() {
         </div>
         <p style={{ fontSize: '11px', color: '#9CA0B0', marginTop: '8px' }}>
           {hasFilters
-            ? `Showing ${filteredLearners.length} of ${learners.length} learners`
+            ? `Showing ${filteredLearners.length} of ${learnersData.length} learners`
             : "Default view shows top 10 learners alphabetically."
           }
         </p>
